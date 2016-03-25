@@ -7,13 +7,13 @@ ASRC    = xitoa.S
 VPATH   =
 
 ### Target device
-DEVICE  = atmega48
+DEVICE  = atmega32u4
 
 ### Include dirs, library dirs and definitions
 LIBS	=
 LIBDIRS	=
 INCDIRS	=
-DEFS	= F_CPU=10000000
+DEFS	= F_CPU=16000000
 ADEFS	= $(DEFS)
 
 ### Optimization level (0, 1, 2, 3, 4 or s)
@@ -93,7 +93,7 @@ version :
 # Create final output file from ELF output file.
 %.hex: %.elf
 	@echo
-	$(OBJCOPY) -j .text -j .data -j .eeprom -j .fuse -O $(HEXFMT) $< $@
+	$(OBJCOPY) -R .eeprom -O ihex $< $@
 
 %.bin: %.elf
 	@echo
@@ -102,7 +102,7 @@ version :
 # Create extended listing file from ELF output file.
 %.lst: %.elf
 	@echo
-	$(OBJDUMP) -h -S -C $< > $@
+	$(OBJDUMP) -S $< > $@
 
 # Create a symbol table from ELF output file.
 %.sym: %.elf
@@ -139,6 +139,12 @@ clean:
 	@echo
 	rm -f -r $(OBJDIR) | exit 0
 
+
+dfu: $(PROJECT).hex
+	echo $(PROJECT).hex
+	dfu-programmer $(DEVICE) erase
+	dfu-programmer $(DEVICE) flash $(PROJECT).hex
+	dfu-programmer $(DEVICE) reset
 
 # Include the dependency files.
 -include $(shell mkdir $(OBJDIR) 2>/dev/null) $(wildcard $(OBJDIR)/*.d)
