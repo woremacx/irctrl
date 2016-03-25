@@ -8,12 +8,14 @@
 
 #include <avr/io.h>
 #include <avr/pgmspace.h>
+#include <avr/power.h>
+#include <avr/wdt.h>
 #include <string.h>
 #include <ctype.h>
 #include "uart.h"
 #include "xitoa.h"
 #include "ir_ctrl.h"
-
+#include "util.h"
 
 
 /*--------------------------------------------------------------------------*/
@@ -114,20 +116,39 @@ void get_line (char* buff, int len)
 /* Main                                                                  */
 /*-----------------------------------------------------------------------*/
 
-
 int main (void)
 {
 	char line[64], *p;
 	long val;
 	uint8_t n;
 
+	/* Disable watchdog if enabled by bootloader/fuses */
+	MCUSR &= ~(1 << WDRF);
+	wdt_disable();
+
+	// Enable External Clock
+	CLKSEL0 |= (1 << EXTE);// CKSEL0.EXTE = 1;// Enable_external_clock();
+	while ( (CLKSTA & (1 << EXTON)) == 0 ){} // while (CLKSTA.EXTON != 1);// while (!External_clock_ready());
+	CLKSEL0 |= (1 << CLKS);// CLKSEL0.CLKS = 1;//Select_external_clock();
+	PLLCSR |= (1 << PLLE);// PLLCSR.PLLE = 1;// Enable_pll();
+	CLKSEL0 &= ~(1 << RCE);// CLKSEL0.RCE = 0;// Disable_RC_clock();
+	while ( (PLLCSR & (1 << PLOCK)) == 0){}// while (PLLCSR.PLOCK != 1);// while (!Pll_ready());
+	USBCON &= ~(1 << FRZCLK);// USBCON.FRZCLK = 0;// Usb_unfreeze_clock();
+
+	clock_prescale_set(clock_div_1);
+	set_bit(DDRC, 7);
+	set_bit(PORTC, 7);
+	clear_bit(DDRD, 4);
+
+#if 0
 	/* ポート初期化 */
-	PORTB = 0b00100111; 	/* PortB, IR input */
+	PORTB = 0b00100111; 	/* PortB, IR input */ //PB0:ICP1,PB1:OC1A,PB2:OC1B
 	DDRB  = 0b00000000;
-	PORTD = 0b11011111;		/* PortD, IR drive, Comm */
+	PORTD = 0b11011111;		/* PortD, IR drive, Comm */ // PD0:RXD, PD1:TXD
 	DDRD  = 0b00100010;
 	PORTC = 0b00111111;		/* PortC */
 	DDRC  = 0b00000000;
+#endif
 
 	uart_init();			/* Initialize UART driver */
 	xfunc_out = (void(*)(char))uart_put;	/* Join xitoa module to communication module */
@@ -138,6 +159,8 @@ int main (void)
 	sei();
 
 	xputs(PSTR("IR remote control test program\n"));
+
+	clear_bit(PORTC, 7);
 
 	/* ユーザコマンド処理ループ */
 	for (;;) {
