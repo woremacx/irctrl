@@ -50,7 +50,7 @@
 #define COMP_NXT(n)	OCR1A += (n)							/* TX: Increase compare register by n count */
 
 /* Counter clock rate and register width */
-#define T_CLK			800									/* Always: Timer tick period [ns] */
+#define T_CLK			500									/* Always: Timer tick period [ns] */
 #define	irtmr_t			uint16_t							/* Always: Integer type of timer counter */
 
 /* Definitions of interrupt service functions */
