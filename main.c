@@ -18,6 +18,7 @@
 #include "util.h"
 
 
+#if 0
 /*--------------------------------------------------------------------------*/
 /* 受信フレームの表示                                                       */
 
@@ -108,9 +109,31 @@ void get_line (char* buff, int len)
 	buff[idx] = 0;
 	xputc('\n');
 }
+#endif
 
 
 
+#define SHARP_LEN 6
+unsigned char ircode_sharp_2_power[SHARP_LEN] = { 0xAA, 0x5A, 0x8F, 0x18, 0x16, 0x71 };
+
+void dispatch_aquos() {
+    uint8_t l;
+
+    for (;;) {
+        if (IrCtrl.stat == IR_RECVED) {
+            l = IrCtrl.len;
+            if (IrCtrl.fmt != AEHA)
+                continue;
+            if (!((l >= 48) && (l % 8 == 0)))
+                continue;
+            l /= 8;
+
+            if (memcmp(&IrCtrl.rxdata, &ircode_sharp_2_power, SHARP_LEN) == 0) {
+                xputs(PSTR("POWR    \r"));
+            }
+        }
+    }
+}
 
 /*-----------------------------------------------------------------------*/
 /* Main                                                                  */
@@ -118,9 +141,11 @@ void get_line (char* buff, int len)
 
 int main (void)
 {
+#if 0
 	char line[64], *p;
 	long val;
 	uint8_t n;
+#endif
 
 	/* Disable watchdog if enabled by bootloader/fuses */
 	MCUSR &= ~(1 << WDRF);
@@ -140,16 +165,6 @@ int main (void)
 	set_bit(PORTC, 7);
 	clear_bit(DDRD, 4);
 
-#if 0
-	/* ポート初期化 */
-	PORTB = 0b00100111; 	/* PortB, IR input */ //PB0:ICP1,PB1:OC1A,PB2:OC1B
-	DDRB  = 0b00000000;
-	PORTD = 0b11011111;		/* PortD, IR drive, Comm */ // PD0:RXD, PD1:TXD
-	DDRD  = 0b00100010;
-	PORTC = 0b00111111;		/* PortC */
-	DDRC  = 0b00000000;
-#endif
-
 	uart_init();			/* Initialize UART driver */
 	xfunc_out = (void(*)(char))uart_put;	/* Join xitoa module to communication module */
 
@@ -158,11 +173,15 @@ int main (void)
 
 	sei();
 
-	xputs(PSTR("IR remote control test program\n"));
+	//xputs(PSTR("IR remote control test program\n"));
 
 	clear_bit(PORTC, 7);
 
 	/* ユーザコマンド処理ループ */
+	for (;;) {
+		dispatch_aquos();
+	}
+#if 0
 	for (;;) {
 		get_line(line, sizeof line);
 		p = line;
@@ -196,6 +215,7 @@ int main (void)
 		}
 
 	}
+#endif
 }
 
 
