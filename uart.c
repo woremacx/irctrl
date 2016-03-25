@@ -6,7 +6,7 @@
 #include <avr/interrupt.h>
 #include "uart.h"
 
-#define	SYSCLK		10000000UL
+#define	SYSCLK		16000000UL
 #define	BAUD		38400
 
 
@@ -36,8 +36,8 @@ void uart_init()
 	txfifo.count = 0;
 
 	/* Enable USART0 (N81) */
-	UBRR0L = SYSCLK/BAUD/16-1;
-	UCSR0B = _BV(RXEN0)|_BV(RXCIE0)|_BV(TXEN0);
+	UBRR1L = SYSCLK/BAUD/16-1;
+	UCSR1B = _BV(RXEN1)|_BV(RXCIE1)|_BV(TXEN1);
 }
 
 
@@ -78,7 +78,7 @@ void uart_put (uint8_t d)
 	txfifo.buff[i++] = d;
 	cli();
 	txfifo.count++;
-	UCSR0B |= _BV(UDRIE0);
+	UCSR1B |= _BV(UDRIE1);
 	sei();
 	txfifo.idx_w = i % sizeof(txfifo.buff);
 }
@@ -86,12 +86,12 @@ void uart_put (uint8_t d)
 
 /* UART RXC interrupt */
 
-ISR(USART_RX_vect)
+ISR(USART1_RX_vect)
 {
 	uint8_t d, n, i;
 
 
-	d = UDR0;
+	d = UDR1;
 	n = rxfifo.count;
 	if (n < sizeof(rxfifo.buff)) {
 		rxfifo.count = ++n;
@@ -104,7 +104,7 @@ ISR(USART_RX_vect)
 
 /* UART UDRE interrupt */
 
-ISR(USART_UDRE_vect)
+ISR(USART1_UDRE_vect)
 {
 	uint8_t n, i;
 
@@ -113,11 +113,11 @@ ISR(USART_UDRE_vect)
 	if (n) {
 		txfifo.count = --n;
 		i = txfifo.idx_r;
-		UDR0 = txfifo.buff[i++];
+		UDR1 = txfifo.buff[i++];
 		txfifo.idx_r = i % sizeof(txfifo.buff);
 	}
 	if (n == 0)
-		UCSR0B &= ~_BV(UDRIE0);
+		UCSR1B &= ~_BV(UDRIE1);
 }
 
 
